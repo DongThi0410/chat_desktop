@@ -1,0 +1,46 @@
+    // Hàm đăng ký
+    public function register(Request $request)
+    {
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'phone' => 'required|string|unique:users,phone',
+            'password' => 'required|string|min:8',
+        ]);
+
+        // Tạo tài khoản mới
+        User::create([
+            'name' => $validatedData['name'],
+            'phone' => $validatedData['phone'],
+            'password' => Hash::make($validatedData['password']),
+        ]);
+
+        return redirect()->route('login')->with('success', 'Đăng ký thành công! Vui lòng đăng nhập.');
+    }
+
+    // Hàm đăng nhập
+    public function login(Request $request)
+    {
+        $credentials = $request->validate([
+            'phone' => 'required|string',
+            'password' => 'required|string',
+        ]);
+
+        if (Auth::attempt(['phone' => $credentials['phone'], 'password' => $credentials['password']])) {
+            $request->session()->regenerate();
+            return redirect()->intended('/');
+        }
+
+        return back()->withErrors([
+            'phone' => 'Số điện thoại hoặc mật khẩu không đúng.',
+        ]);
+    }
+
+    // Hàm đăng xuất
+    public function logout(Request $request)
+    {
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/login');
+    }
