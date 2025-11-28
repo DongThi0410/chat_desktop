@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 public final class MySqlHelper {
-    private static final String URL = "jdbc:mysql://localhost:3307/chat?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC";
+    private static final String URL = "jdbc:mysql://localhost:3306/chat?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC";
     private static final String USER = "root";
     private static final String PASS = "";
 
@@ -70,10 +70,29 @@ public final class MySqlHelper {
         }
     }
 
+    public static void saveFileMessage(String sender, String receiver, String originalName, String fileUUID, long size) {
+        String sql = "INSERT INTO messages(sender, receiver, content, msg_type, file_uuid, file_name, file_size, timestamp) " +
+                "VALUES(?, ?, NULL, 'file', ?, ?, ?, NOW())";
+        try (Connection c = DriverManager.getConnection(URL, USER, PASS);
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setString(1, sender);
+            ps.setString(2, receiver);
+            ps.setString(3, fileUUID);       // file_uuid
+            ps.setString(4, originalName);   // file_name
+            ps.setLong(5, size);             // file_size
+
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static List<ChatRow> loadChat(String a, String b, int limit) {
-        String sql = "SELECT sender, receiver, content, timestamp  FROM messages " +   // thêm space ở đây
+        String sql = "SELECT sender, receiver, content, msg_type, file_uuid, file_name, file_size, timestamp " +
+                "FROM messages " +
                 "WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) " +
-                "ORDER BY timestamp  ASC LIMIT ?";
+                "ORDER BY timestamp ASC LIMIT ?";
 
         List<ChatRow> list = new ArrayList<>();
 
@@ -88,12 +107,19 @@ public final class MySqlHelper {
 
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                list.add(new ChatRow(
-                        rs.getString(1),
-                        rs.getString(2),
-                        rs.getString(3),
-                        rs.getTimestamp(4)
-                ));
+
+                ChatRow row = new ChatRow(
+                        rs.getString("sender"),
+                        rs.getString("receiver"),
+                        rs.getString("content"),
+                        rs.getString("msg_type"),
+                        rs.getString("file_uuid"),
+                        rs.getString("file_name"),
+                        rs.getLong("file_size"),
+                        rs.getTimestamp("timestamp")
+                );
+
+                list.add(row);
             }
 
         } catch (SQLException e) {
@@ -102,13 +128,12 @@ public final class MySqlHelper {
 
         return list;
     }
-
     public static List<String> loadChatPartners(String me) {
         String sql = """
-            SELECT DISTINCT CASE WHEN sender = ? THEN receiver ELSE sender END AS peer
-            FROM messages
-            WHERE sender = ? OR receiver = ?
-            """;
+                SELECT DISTINCT CASE WHEN sender = ? THEN receiver ELSE sender END AS peer
+                FROM messages
+                WHERE sender = ? OR receiver = ?
+                """;
         List<String> list = new ArrayList<>();
         try (Connection c = DriverManager.getConnection(URL, USER, PASS);
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -117,7 +142,9 @@ public final class MySqlHelper {
             ps.setString(3, me);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) list.add(rs.getString("peer"));
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return list;
     }
 
@@ -136,7 +163,9 @@ public final class MySqlHelper {
                 );
                 return Optional.of(po);
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return Optional.empty();
     }
 
@@ -155,13 +184,32 @@ public final class MySqlHelper {
         public final String username;
         public final String ip;
         public final int port;
-        public PeerInfo(String u, String i, int p) { username = u; ip = i; port = p; }
+
+        public PeerInfo(String u, String i, int p) {
+            username = u;
+            ip = i;
+            port = p;
+        }
     }
 
     public static class ChatRow {
-        public final String sender, receiver, content;
+        public final String sender, receiver, content, msgType, fileUUID, fileName;
+        public final long fileSize;
+
+        public ChatRow(String sender, String receiver, String content, String msgType, String fileUUID, String fileName, long fileSize, Timestamp ts) {
+            this.sender = sender;
+            this.receiver = receiver;
+            this.content = content;
+            this.msgType = msgType;
+            this.fileUUID = fileUUID;
+            this.fileName = fileName;
+            this.fileSize = fileSize;
+            this.ts = ts;
+        }
+
         public final Timestamp ts;
-        public ChatRow(String s, String r, String c, Timestamp t) { sender = s; receiver = r; content = c; ts = t; }
+
+
     }
 
     public static class PeerOnline {
@@ -169,8 +217,12 @@ public final class MySqlHelper {
         public final String ip;
         public final int port;
         public final Timestamp lastSeen;
+
         public PeerOnline(String u, String ip, int p, Timestamp t) {
-            this.username = u; this.ip = ip; this.port = p; this.lastSeen = t;
+            this.username = u;
+            this.ip = ip;
+            this.port = p;
+            this.lastSeen = t;
         }
     }
 }

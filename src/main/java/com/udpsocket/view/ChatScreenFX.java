@@ -50,31 +50,25 @@ public class ChatScreenFX extends Application {
         stage.setTitle("P2P Chat - User: " + peerName());
 
         peersListView = new ListView<>();
-//        peersListView.setItems(viewModel.getPeersOnline());
-
         peersListView.setItems(viewModel.getPeersList());
+
         messageListView = new ListView<>();
         messageListView.setFocusTraversable(false);
+
         peersListView.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
             if (newV == null) return;
 
-            // 1. Cập nhật active peer
-            String peerName = newV.getUsername();
-            currentChat = peerName;
-            viewModel.setActivePeer(peerName);
+            currentChat = newV.getUsername();
+            viewModel.setActivePeer(currentChat);
 
-            // 2. Tải lịch sử từ DB
             List<MySqlHelper.ChatRow> rows =
-                    MySqlHelper.loadChat(peer.getName(), peerName, 1000);
+                    MySqlHelper.loadChat(peer.getName(), currentChat, 1000);
 
-            // 3. Lấy list hiển thị từ ViewModel
             ObservableList<String> displayList =
-                    viewModel.getChatHistory(peerName);
+                    viewModel.getChatHistory(currentChat);
 
-            // 4. Xóa dữ liệu cũ
             displayList.clear();
 
-            // 5. Nạp dữ liệu từ DB
             for (MySqlHelper.ChatRow r : rows) {
                 if (r.sender.equals(peer.getName())) {
                     displayList.add("Me: " + r.content);
@@ -83,7 +77,6 @@ public class ChatScreenFX extends Application {
                 }
             }
 
-            // 6. Gán vào UI
             messageListView.setItems(displayList);
 
             // 7. Auto scroll xuống cuối

@@ -42,11 +42,13 @@ public class Peer {
 
 
     }
+
     public Peer(String name, String serverIp, int tcpPort, int udpPort, PeerEventListener listener) throws IOException {
         this(name, serverIp, tcpPort, udpPort);
         setListener(listener);
         start();
     }
+
     public synchronized void start() {
         if (started) return;
         if (listener == null) {
@@ -56,17 +58,9 @@ public class Peer {
         executor.submit(this::tcpLoop);
         executor.submit(this::udpLoop);
     }
+
     public void setListener(PeerEventListener listener) {
         this.listener = listener;
-    }
-
-    public void sendMessage(String target, String msg) {
-        try {
-            dos.writeUTF("TEXT " + target + " " + msg);
-            dos.flush();
-        } catch (IOException e) {
-            if (listener != null) listener.onError("sendMessage: " + e.getMessage());
-        }
     }
 
     private void tcpLoop() {
@@ -146,6 +140,20 @@ public class Peer {
         }
     }
 
+    public void sendMessage(String target, String msg) {
+        try {
+            dos.writeUTF("TEXT " + target + " " + msg);
+            dos.flush();
+        } catch (IOException e) {
+            if (listener != null) listener.onError("sendMessage: " + e.getMessage());
+        }
+    }
+
+//    public void sendFileMessage(String target, File file) {
+//        if (file==null || target == null) return;
+//        Str
+//    }
+//
 
     public void close() {
         try {
@@ -155,6 +163,66 @@ public class Peer {
 
         executor.shutdownNow();
     }
+
+    public void uploadFileToServer(String filePath, String serverIp, int serverPort, String target) throws IOException {
+        File f = new File(filePath);
+        if (!f.exists()) throw new FileNotFoundException(filePath);
+
+        String url = "http://" + serverIp + ":" + serverPort + "/upload?name=" + URLEncoder.encode(f.getName(), "UTF-8")
+                + "&from=" + URLEncoder.encode(this.name, "UTF-8")
+                + "&to=" + URLEncoder.encode(target, "UTF-8");
+
+        HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+        conn.setDoOutput(true);
+        conn.setRequestMethod("POST");
+        conn.setFixedLengthStreamingMode((int) f.length());
+        conn.setRequestProperty("Content-Type", "application/octet-stream");
+        conn.connect();
+
+        try (OutputStream out = conn.getOutputStream();
+             FileInputStream fis = new FileInputStream(f)) {
+            byte[] buf = new byte[8192];
+            int r;
+            while ((r = fis.read(buf)) != -1) out.write(buf,0,r);
+            out.flush();
+        }
+
+        int code = conn.getResponseCode();
+        if (code != 200) throw new IOException("Upload failed code:" + code);
+
+        try (InputStream in = conn.getInputStream();
+             ByteArrayOutputStream baos = new ByteArrayOutputStream()
+        ){
+
+            byte[] buf = new byte[8192];
+            int r;
+            while ((r=in.read(buf)) != -1) baos.write(buf,0,r);
+            String json = baos.toString("UTF-8");
+            String id = extractJson(json, "id");
+
+            String sizeS = extractJson(json, "size");
+
+            long size = sizeS!=null?Long.parseLong(sizeS):f.length();
+
+            dos.writeUTF("FILE_META " + target + " " + id + " " + f.getName() + " " + serverIp + " " + serverPort + " " + size);
+            dos.flush();
+        }
+
+
+    }
+
+    private static String extractJson(String json, String key) {
+        String pat = "\"" + key + "\":";
+        int i = json.indexOf(pat);
+        if (i<0) return null;
+        int j = json.indexOf(',', i+pat.length());
+        int k = json.indexOf('}', i+pat.length());
+        int end = j>0?Math.min(j,k):k;
+        String val = json.substring(i+pat.length(), end).trim();
+        if (val.startsWith("\"")) return val.substring(1, val.indexOf('"',1));
+        else return val;
+    }
+
     public String getName() { return name; }
 
 }

@@ -1,7 +1,7 @@
 package com.udpsocket.model;
-import java.util.List;
 
 import java.awt.image.BufferedImage;
+import java.util.List;
 public interface PeerEventListener {
     void onMessageReceived(String from, String msg);
 
