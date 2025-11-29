@@ -1,9 +1,6 @@
 package com.udpsocket.view;
 
-import com.udpsocket.helpers.MySqlHelper;
-import com.udpsocket.helpers.MySqlHelper.ChatRow;
 import com.udpsocket.model.Peer;
-import com.udpsocket.model.PeerEventListener;
 import com.udpsocket.model.PeerItem;
 import com.udpsocket.viewmodel.ChatViewModel;
 import javafx.application.Platform;
@@ -21,8 +18,6 @@ import javafx.stage.Stage;
 
 import javafx.application.Application;
 
-import java.util.List;
-
 
 public class ChatScreenFX extends Application {
 
@@ -36,13 +31,14 @@ public class ChatScreenFX extends Application {
 
     private String currentChat = null;
 
-    public ChatScreenFX(Peer peer) {
+    public ChatScreenFX(Peer peer, String serverHost, int serverPort) {
         this.peer = peer;
-        this.viewModel = new ChatViewModel(peer);
+        this.viewModel = new ChatViewModel(peer, serverHost, serverPort);
     }
-    public static void openWithPeer(Peer p) {
+    public static void openWithPeer(Peer p, String serverHost, int serverPort) {
         staticPeer = p;
-        Application.launch();
+        ChatScreenFX screen = new ChatScreenFX(p, serverHost, serverPort);
+        screen.launch();
     }
 
     @Override
@@ -61,23 +57,13 @@ public class ChatScreenFX extends Application {
             currentChat = newV.getUsername();
             viewModel.setActivePeer(currentChat);
 
-            List<MySqlHelper.ChatRow> rows =
-                    MySqlHelper.loadChat(peer.getName(), currentChat, 1000);
-
-            ObservableList<String> displayList =
-                    viewModel.getChatHistory(currentChat);
-
+            ObservableList<String> displayList = viewModel.getChatHistory(currentChat);
             displayList.clear();
-
-            for (MySqlHelper.ChatRow r : rows) {
-                if (r.sender.equals(peer.getName())) {
-                    displayList.add("Me: " + r.content);
-                } else {
-                    displayList.add(r.sender + ": " + r.content);
-                }
-            }
-
             messageListView.setItems(displayList);
+
+// Load lịch sử từ server
+            viewModel.loadServerChatHistory(currentChat);
+
 
             // 7. Auto scroll xuống cuối
             if (!displayList.isEmpty()) {
@@ -114,7 +100,7 @@ public class ChatScreenFX extends Application {
         sendBtn.setOnAction(e -> sendCurrentMessage());
 
         Button logoutBtn = new Button("Logout");
-        logoutBtn.setOnAction(e -> handleLogout(stage));
+        logoutBtn.setOnAction(e -> handleLogout(stage, peer.getName()));
 
 
         HBox bottom = new HBox(10, inputField, sendBtn, logoutBtn);
@@ -147,15 +133,14 @@ public class ChatScreenFX extends Application {
         });
     }
 
-    private void handleLogout(Stage stage){
+    private void handleLogout(Stage stage, String name){
         try {
+            viewModel.logout(peer.getName());
             peer.close();
-            MySqlHelper.removePeerByName(peer.getName());
             LoginScreenFX login = new LoginScreenFX();
-
             login.start(new Stage());
-
             stage.close();
+
         } catch (Exception e) {
             e.printStackTrace();
         }

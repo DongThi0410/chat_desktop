@@ -56,7 +56,7 @@ public class LoginScreenFX extends Application {
             // Kết nối tới server
             Peer peer = new Peer(name, serverIp, DEFAULT_TCP, DEFAULT_UDP);
 
-            ChatScreenFX chat = new ChatScreenFX(peer);
+            ChatScreenFX chat = new ChatScreenFX(peer, serverIp, DEFAULT_TCP);
             chat.start(new Stage());
 
             peer.start();

@@ -11,6 +11,7 @@ module com.udpsocket {
     requires org.bytedeco.opencv;
     requires org.bytedeco.libfreenect;
     requires java.sql;
+    requires org.json;
 
     opens com.udpsocket.view to javafx.fxml, javafx.graphics;
     exports com.udpsocket.view;

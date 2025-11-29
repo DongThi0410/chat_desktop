@@ -1,4 +1,7 @@
 package com.udpsocket.model;
+import com.udpsocket.model.network.ServerAPI;
+import javafx.application.Platform;
+
 import java.io.*;
 import java.net.*;
 import java.util.Arrays;
@@ -149,11 +152,70 @@ public class Peer {
         }
     }
 
-//    public void sendFileMessage(String target, File file) {
-//        if (file==null || target == null) return;
-//        Str
-//    }
-//
+    public void sendFileToPeer(String targetHost, int targetPort, File file) throws IOException {
+        executor.submit(()-> {
+            try (Socket s = new Socket(targetHost, targetPort);
+            FileInputStream fis = new FileInputStream(file);
+            OutputStream os = s.getOutputStream();){
+                byte[] buf = new byte[8192];
+                int read;
+                while ((read = fis.read(buf)) != -1) {
+                    os.write(buf, 0, read);
+                }
+                os.flush();
+                if (listener!=null){
+                    listener.onInfo("File sent to " + targetHost + ":" + targetPort + " -> " + file.getName());
+                }
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public void receiveFile(int listenPort, File saveTo){
+        executor.submit(()-> {
+            try (ServerSocket ss = new ServerSocket(listenPort);
+            Socket s = ss.accept();
+            InputStream in = s.getInputStream();
+            FileOutputStream fos = new FileOutputStream(saveTo);){
+                byte[] buf = new byte[8192];
+                int read;
+                while ((read = in.read(buf)) != -1) {
+                    fos.write(buf, 0, read);
+                }
+                fos.flush();
+
+                if (listener!=null){
+                    listener.onInfo("File sent to " + saveTo.getName());
+                    Platform.runLater(() -> listener.onMessageReceivedRaw(String.format("{\"action\":\"file_meta\",\"from\":\"%s\",\"to\":\"%s\",\"filename\":\"%s\"}",
+                            "peer", name, saveTo.getName())));
+                }
+
+            } catch (IOException e) {
+                if (listener != null) listener.onError("receiveFile: " + e.getMessage());
+            }
+        });
+    }
+
+    public void sendFileMessage(String target, File file, ServerAPI serverAPI) {
+        if (!file.exists()) return;
+
+        new Thread(() -> {
+            try {
+                String fileUrl = serverAPI.uploadFile(file, name, target);
+
+                String metaMsg = String.format("{\"action\":\"file_meta\",\"from\":\"%s\",\"to\":\"%s\",\"filename\":\"%s\",\"size\":%d,\"url\":\"%s\"}",
+                        name, target, file.getName(), file.length(), fileUrl);
+
+                dos.writeUTF(metaMsg);
+                dos.flush();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
+    }
+
 
     public void close() {
         try {
