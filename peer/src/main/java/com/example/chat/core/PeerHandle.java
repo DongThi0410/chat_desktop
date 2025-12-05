@@ -35,9 +35,9 @@ public class PeerHandle {
 
     private MessageListener listener;
 
-    public PeerHandle(String name, String serverHost, int serverPort) throws IOException {
+    public PeerHandle(String name, String serverHost, int serverPort, ChatDatabase db) throws IOException {
         this.name = name;
-
+this.db = db;
         // open server socket on ephemeral port
         this.serverSocket = new ServerSocket(0);
         this.listenPort = serverSocket.getLocalPort();

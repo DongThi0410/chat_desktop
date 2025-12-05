@@ -1,17 +1,14 @@
 package com.example.chat.db;
 
-import java.nio.file.Paths;
 import java.sql.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ChatDatabase {
-    private final String url;
-
-    public ChatDatabase(String dbPath) {
+public record ChatDatabase(String url) {
+    public ChatDatabase(String url) {
         // dbPath e.g. "./chat_history.db" or System.getProperty("user.home") + "/.p2p_chat.db"
-        this.url = "jdbc:sqlite:" + dbPath;
+        this.url = "jdbc:sqlite:" + url;
         init();
     }
 

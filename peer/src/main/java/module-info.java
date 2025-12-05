@@ -8,11 +8,14 @@ module com.example.chat {
     requires java.desktop;
     requires javafx.graphics;
     requires java.sql;
-    requires com.example.chat;
 
-    opens com.example.chat to javafx.fxml;
+    // Packages export
     exports com.example.chat.UI;
-    opens com.example.chat.UI to javafx.fxml;
     exports com.example.chat.core;
+    exports com.example.chat.db; // ★ Bạn còn thiếu dòng này
+
+    // Open for FXML reflection
+    opens com.example.chat to javafx.fxml;
+    opens com.example.chat.UI to javafx.fxml;
     opens com.example.chat.core to javafx.fxml;
 }

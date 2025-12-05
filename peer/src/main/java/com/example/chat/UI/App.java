@@ -37,7 +37,6 @@ public class App extends Application {
 
     private Stage primaryStage;
     private PeerHandle peer;
-    private ChatDatabase db;
     private String myName;
 
     private VBox messagesBox;
@@ -47,6 +46,7 @@ public class App extends Application {
 
     private String SERVER_IP_DEFAULT = "127.0.0.1";
     private int SERVER_PORT_DEFAULT = 5000;
+    ChatDatabase db = new ChatDatabase("chat_history.db");
 
     public static void main(String[] args) {
         launch(args);
@@ -78,7 +78,7 @@ public class App extends Application {
             }
 
             try {
-                peer = new PeerHandle(name, SERVER_IP_DEFAULT, SERVER_PORT_DEFAULT);
+                peer = new PeerHandle(name, SERVER_IP_DEFAULT, SERVER_PORT_DEFAULT, db);
             } catch (IOException ex) {
                 statusLabel.setText("❌ Failed to initialize peer: " + ex.getMessage());
                 return;
