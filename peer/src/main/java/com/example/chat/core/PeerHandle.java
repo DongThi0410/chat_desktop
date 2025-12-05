@@ -1,6 +1,8 @@
 package com.example.chat.core;
 
 
+import com.example.chat.db.ChatDatabase;
+import com.example.chat.db.Message;
 import com.example.chat.listener.MessageListener;
 import com.example.chat.api.ServerAPI;
 
@@ -25,6 +27,7 @@ public class PeerHandle {
 
     // cache local (thread-safe)
     private final Map<String, String> cachedPeers = new ConcurrentHashMap<>();
+    private ChatDatabase db;
 
     // modules
     private final MessageHandler messageHandler;
@@ -128,6 +131,7 @@ public class PeerHandle {
     }
 
     private void onIncomingMessage(String sender, String message) {
+        db.insertMessage(new Message(sender, this.name, message, false, null));
 
         if (listener != null) listener.onMessage(sender, message);
         else System.out.println("[Text received]"+message);

@@ -8,6 +8,7 @@ module com.example.chat {
     requires java.desktop;
     requires javafx.graphics;
     requires java.sql;
+    requires com.example.chat;
 
     opens com.example.chat to javafx.fxml;
     exports com.example.chat.UI;
