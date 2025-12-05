@@ -138,6 +138,8 @@ this.db = db;
     }
 
     private void onIncomingFile(String sender, String filename, String absolutePath, long size) {
+        db.insertMessage(new Message(sender, this.name,filename, true, absolutePath));
+
         if (listener != null) listener.onFileReceived(sender, filename, absolutePath, size);
         else System.out.println("[File received] from " + sender + ": " + filename + " -> " + absolutePath);
     }

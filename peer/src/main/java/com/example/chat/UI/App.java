@@ -85,7 +85,6 @@ public class App extends Application {
             }
 
             myName = name;
-            db = new ChatDatabase("./chat_history.db"); // local DB
 
             boolean registered = peer.register();
             if (registered) {
